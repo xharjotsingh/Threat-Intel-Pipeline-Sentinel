@@ -1,0 +1,5 @@
+let BadDomains = _GetWatchlist('ThreatIntelFeed') | project MaliciousDomains; 
+Event 
+| where EventLog == "Microsoft-Windows-DNS-Client/Operational" 
+| where RenderedDescription has_any (BadDomains) 
+| project TimeGenerated, Computer, EventLog, RenderedDescription

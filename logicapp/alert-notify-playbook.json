@@ -1,0 +1,152 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "logicAppApiVersion": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string"
+        },
+        "workflowSchema": {
+            "type": "string"
+        },
+        "logicAppState": {
+            "type": "string",
+            "defaultValue": "Enabled"
+        },
+        "definition": {
+            "type": "string",
+            "defaultValue": "[concat('{\"contentVersion\":\"1.0.0.0\",\"parameters\":{},\"actions\":{},\"triggers\":{},\"outputs\":{},\"$schema\":\"', parameters('workflowSchema'), '\"}')]"
+        },
+        "parameters": {
+            "type": "object",
+            "defaultValue": {}
+        },
+        "diagnosticsApiVersion": {
+            "type": "string"
+        },
+        "omsWorkspaceId": {
+            "type": "string"
+        },
+        "omsSolutionApiVersion": {
+            "type": "string"
+        },
+        "resourceDeploymentApiVersion": {
+            "type": "string"
+        },
+        "omsSolutionLocation": {
+            "type": "string"
+        },
+        "omsSolutionName": {
+            "type": "string"
+        },
+        "omsWorkspaceName": {
+            "type": "string"
+        },
+        "omsWorkspaceResourceGroupName": {
+            "type": "string"
+        },
+        "retentionDays": {
+            "type": "int",
+            "defaultValue": 0
+        },
+        "retentionPolicyEnabled": {
+            "type": "bool",
+            "defaultValue": false
+        },
+        "logsEnabled": {
+            "type": "bool",
+            "defaultValue": true
+        }
+    },
+    "resources": [
+        {
+            "apiVersion": "[parameters('logicAppApiVersion')]",
+            "name": "[parameters('name')]",
+            "type": "Microsoft.Logic/workflows",
+            "location": "[parameters('location')]",
+            "tags": {},
+            "properties": {
+                "definition": "[json(parameters('definition'))]",
+                "parameters": "[parameters('parameters')]",
+                "state": "[parameters('logicAppState')]"
+            },
+            "resources": [
+                {
+                    "apiVersion": "[parameters('diagnosticsApiVersion')]",
+                    "type": "providers/diagnosticSettings",
+                    "name": "microsoft.insights/service",
+                    "properties": {
+                        "storageAccountId": null,
+                        "serviceBusRuleId": null,
+                        "workspaceId": "/subscriptions/019a3965-16a3-4cdd-ac1a-5d645e0f0fcc/resourceGroups/ThreatIntelLabRG/providers/Microsoft.OperationalInsights/workspaces/ThreatIntelLab",
+                        "eventHubAuthorizationRuleId": null,
+                        "eventHubName": null,
+                        "metrics": [
+                            {
+                                "timeGrain": "AllMetrics",
+                                "category": "AllMetrics",
+                                "enabled": "[parameters('logsEnabled')]",
+                                "retentionPolicy": {
+                                    "enabled": "[parameters('retentionPolicyEnabled')]",
+                                    "days": "[parameters('retentionDays')]"
+                                }
+                            }
+                        ],
+                        "logs": [
+                            {
+                                "category": "WorkflowRuntime",
+                                "enabled": "[parameters('logsEnabled')]",
+                                "retentionPolicy": {
+                                    "enabled": "[parameters('retentionPolicyEnabled')]",
+                                    "days": "[parameters('retentionDays')]"
+                                }
+                            }
+                        ]
+                    },
+                    "identity": null,
+                    "dependsOn": [
+                        "[concat('Microsoft.Logic/workflows/', parameters('name'))]"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "[parameters('resourceDeploymentApiVersion')]",
+            "name": "omsSolutionTemplate",
+            "type": "Microsoft.Resources/deployments",
+            "resourceGroup": "[parameters('omsWorkspaceResourceGroupName')]",
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {},
+                    "variables": {},
+                    "resources": [
+                        {
+                            "apiVersion": "[parameters('omsSolutionApiVersion')]",
+                            "type": "Microsoft.OperationsManagement/solutions",
+                            "location": "[parameters('omsSolutionLocation')]",
+                            "name": "[Concat(parameters('omsSolutionName'), '(', parameters('omsWorkspaceName'), ')')]",
+                            "properties": {
+                                "workspaceResourceId": "/subscriptions/019a3965-16a3-4cdd-ac1a-5d645e0f0fcc/resourceGroups/ThreatIntelLabRG/providers/Microsoft.OperationalInsights/workspaces/ThreatIntelLab"
+                            },
+                            "plan": {
+                                "name": "[Concat(parameters('omsSolutionName'), '(', parameters('omsWorkspaceName'), ')')]",
+                                "product": "[Concat('OMSGallery/', parameters('omsSolutionName'))]",
+                                "promotionCode": "",
+                                "publisher": "Microsoft"
+                            }
+                        }
+                    ]
+                },
+                "parameters": {}
+            }
+        }
+    ]
+}
